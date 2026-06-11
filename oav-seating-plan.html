@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Outwood Academy Valley – Seating Plan Creator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy: #1a1a2e;
+    --blue: #2563EB;
+    --blue-light: #EFF6FF;
+    --blue-mid: #93C5FD;
+    --green: #10B981;
+    --green-light: #F0FDF4;
+    --green-dark: #065F46;
+    --slate: #64748B;
+    --slate-light: #F1F5F9;
+    --slate-border: #E2E8F0;
+    --text: #1E293B;
+    --white: #ffffff;
+    --red: #EF4444;
+    --door-green: #059669;
+  }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--slate-light);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* ── SCREENS ─────────────────────────────────────── */
+  .screen { display: none; }
+  .screen.active { display: flex; flex-direction: column; min-height: 100vh; }
+
+  /* ── HOME ────────────────────────────────────────── */
+  #home-screen { align-items: center; justify-content: center; padding: 40px 20px; }
+  .home-inner { width: 100%; max-width: 600px; display: flex; flex-direction: column; align-items: center; gap: 32px; }
+  .home-logo { text-align: center; }
+  .home-logo .emoji { font-size: 52px; line-height: 1; display: block; margin-bottom: 10px; }
+  .home-logo h1 { font-size: 24px; font-weight: 900; color: var(--navy); letter-spacing: -0.5px; }
+  .home-logo h2 { font-size: 17px; font-weight: 700; color: var(--blue); margin: 4px 0 8px; }
+  .home-logo p  { color: var(--slate); font-size: 14px; }
+  .home-cards { width: 100%; display: flex; flex-direction: column; gap: 14px; }
+  .btn-new-plan {
+    width: 100%; padding: 28px; border: none; border-radius: 16px;
+    background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+    color: #fff; font-size: 17px; font-weight: 700; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    box-shadow: 0 8px 24px rgba(30,58,95,0.25);
+  }
+  .btn-new-plan span.desc { font-weight: 400; font-size: 13px; opacity: 0.85; }
+  .saved-plans-box { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .saved-plans-box h3 { font-size: 11px; font-weight: 700; color: var(--slate); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .saved-item {
+    width: 100%; background: var(--slate-light); border: 1px solid var(--slate-border); border-radius: 8px;
+    padding: 9px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px; font-size: 13px; font-family: inherit;
+  }
+  .saved-item:last-child { margin-bottom: 0; }
+  .saved-item .cls { font-weight: 600; }
+  .saved-item .trm { color: var(--slate); font-size: 12px; }
+
+  /* ── SETUP ────────────────────────────────────────── */
+  #setup-screen { overflow-y: auto; }
+  .setup-inner { max-width: 680px; margin: 0 auto; padding: 28px 20px 48px; }
+  .back-btn { background: none; border: none; color: var(--blue); cursor: pointer; font-size: 13px; padding: 0; margin-bottom: 14px; font-family: inherit; }
+  .setup-school { font-size: 11px; font-weight: 700; color: var(--blue); text-transform: uppercase; letter-spacing: 0.5px; }
+  .setup-heading { font-size: 24px; font-weight: 800; color: var(--navy); margin: 4px 0 24px; }
+  .form-section { margin-bottom: 26px; }
+  .form-label { display: block; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .text-input {
+    width: 100%; padding: 10px 14px; border-radius: 8px; border: 2px solid var(--slate-border);
+    font-size: 15px; outline: none; background: #fff; font-family: inherit; color: var(--text);
+  }
+  .text-input:focus { border-color: var(--blue); }
+  .hint { font-size: 12px; color: #94A3B8; margin-top: 6px; }
+  .hint.ok { color: var(--green); font-weight: 600; }
+
+  /* Terms */
+  .term-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .term-chip {
+    padding: 6px 13px; border-radius: 20px; border: 2px solid var(--slate-border);
+    background: #fff; cursor: pointer; font-size: 12px; font-weight: 500; font-family: inherit;
+    transition: all 0.12s;
+  }
+  .term-chip.active { border-color: var(--blue); background: var(--blue-light); color: #1D4ED8; font-weight: 700; }
+
+  /* Presets */
+  .preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 10px; }
+  .preset-card {
+    padding: 14px 8px; border-radius: 12px; border: 2px solid var(--slate-border);
+    background: #fff; cursor: pointer; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 4px; font-family: inherit;
+    transition: border-color 0.12s;
+  }
+  .preset-card.active { border-color: var(--blue); background: var(--blue-light); }
+  .preset-card strong { font-size: 12px; color: var(--text); }
+  .preset-card span   { font-size: 10px; color: #94A3B8; }
+
+  /* Custom grid */
+  .custom-controls { display: flex; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+  .dim-label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #475569; }
+  .dim-input { width: 52px; padding: 4px 7px; border: 2px solid var(--slate-border); border-radius: 6px; font-size: 13px; font-family: inherit; }
+  #custom-desk-grid { display: grid; gap: 4px; }
+  .custom-cell {
+    width: 34px; height: 34px; border-radius: 6px; border: 2px solid var(--slate-border);
+    background: #F8FAFC; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;
+    transition: all 0.1s;
+  }
+  .custom-cell.on { background: #DBEAFE; border-color: var(--blue); }
+
+  /* Door */
+  .door-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .door-chip {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 10px 14px; border-radius: 10px; border: 2px solid var(--slate-border);
+    background: #fff; cursor: pointer; min-width: 68px; font-family: inherit;
+    transition: all 0.12s;
+  }
+  .door-chip .door-icon { font-size: 20px; line-height: 1; }
+  .door-chip .door-lbl { font-size: 11px; font-weight: 600; color: var(--text); }
+  .door-chip.active { border-color: var(--door-green); background: var(--green-light); }
+  .door-chip.active .door-lbl { color: var(--green-dark); }
+
+  /* Textarea */
+  textarea.text-input { resize: vertical; line-height: 1.5; font-size: 13px; }
+
+  .btn-secondary {
+    margin-top: 10px; padding: 8px 16px; border-radius: 8px; border: 2px solid var(--blue);
+    background: #fff; color: var(--blue); cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit;
+  }
+  .btn-primary-big {
+    width: 100%; padding: 15px; border-radius: 12px; border: none;
+    background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+    color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
+    margin-top: 8px; box-shadow: 0 4px 16px rgba(30,58,95,0.25); font-family: inherit;
+  }
+
+  /* ── PLAN ─────────────────────────────────────────── */
+  #plan-screen { flex-direction: column; overflow: hidden; }
+  .plan-header { background: var(--navy); color: #fff; padding: 10px 16px; flex-shrink: 0; }
+  .plan-header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .header-school { font-size: 10px; font-weight: 700; color: var(--blue-mid); letter-spacing: 0.5px; text-transform: uppercase; }
+  .plan-header-bot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .header-class { font-size: 18px; font-weight: 900; }
+  .term-select {
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25);
+    color: #fff; border-radius: 6px; padding: 4px 8px; font-size: 12px; font-family: inherit;
+  }
+  .header-actions { display: flex; gap: 8px; }
+  .btn-action {
+    padding: 6px 12px; border-radius: 7px; border: 1.5px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.1); color: #fff; cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit;
+  }
+  .btn-action-green { background: var(--green); border: none; }
+  .back-btn-plan { background: none; border: none; color: var(--blue-mid); cursor: pointer; font-size: 12px; font-family: inherit; }
+
+  .plan-body { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+
+  /* Classroom */
+  .classroom-wrap { flex: 1; padding: 14px; display: flex; flex-direction: column; gap: 6px; overflow: auto; }
+  .board-label {
+    text-align: center; font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    color: #94A3B8; text-transform: uppercase; padding: 6px 0;
+    border-bottom: 3px solid #CBD5E1; margin-bottom: 6px;
+  }
+  .classroom-outer { position: relative; flex: 1; display: flex; align-items: flex-start; justify-content: center; }
+  #desk-grid { display: grid; gap: 7px; width: 100%; }
+  .desk {
+    border-radius: 8px; border: 2px solid; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.14s; min-height: 70px; user-select: none; overflow: hidden;
+    flex-direction: column; padding: 4px 3px;
+  }
+  .desk.empty   { border-color: #CBD5E1; background: #F8FAFC; }
+  .desk.occupied { border-color: var(--blue-mid); background: var(--blue-light); }
+  .desk.drag-over { border-color: var(--green) !important; background: var(--green-light) !important; border-style: dashed !important; }
+  .desk.highlight { box-shadow: 0 0 0 3px #F59E0B; transform: scale(1.04); }
+  .desk-initial {
+    width: 26px; height: 26px; border-radius: 50%; background: #DBEAFE;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; color: #1D4ED8; flex-shrink: 0; margin-bottom: 2px;
+  }
+  .desk-firstname { font-size: 11px; font-weight: 700; color: var(--navy); text-align: center; line-height: 1.1; }
+  .desk-fullname  { font-size: 9px; font-weight: 400; color: var(--slate); text-align: center; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; padding: 0 2px; }
+  .desk-empty-plus { font-size: 18px; color: #CBD5E1; font-weight: 300; }
+  .spacer-cell { /* transparent, not a desk */ }
+
+  /* Door marker */
+  .door-marker {
+    position: absolute; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none;
+  }
+  .door-marker .d-icon { font-size: 18px; line-height: 1; }
+  .door-marker .d-lbl  { font-size: 8px; font-weight: 700; color: var(--door-green); letter-spacing: 0.5px; text-transform: uppercase; }
+
+  /* Side panel */
+  .side-panel { width: 230px; background: #fff; border-left: 1px solid var(--slate-border); display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; }
+  .side-tabs { display: flex; border-bottom: 1px solid var(--slate-border); }
+  .side-tab { flex: 1; padding: 10px 6px; border: none; background: none; font-size: 11px; font-weight: 600; color: var(--slate); cursor: pointer; font-family: inherit; }
+  .side-tab.active { color: #1D4ED8; border-bottom: 2px solid var(--blue); background: #F8FAFF; }
+  .pupil-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 5px; }
+  .pupil-chip {
+    display: flex; align-items: center; gap: 7px; padding: 7px 9px;
+    border-radius: 8px; background: var(--slate-light); border: 1.5px solid var(--slate-border);
+    font-size: 12px; font-weight: 500; cursor: grab; transition: all 0.12s;
+  }
+  .pupil-chip.hl { background: #DBEAFE; border-color: var(--blue-mid); }
+  .chip-init {
+    width: 22px; height: 22px; border-radius: 50%; background: #DBEAFE;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; color: #1D4ED8; flex-shrink: 0;
+  }
+  .all-seated { text-align: center; color: var(--green); font-weight: 700; font-size: 13px; padding: 18px 0; }
+  .group-panel { flex: 1; overflow-y: auto; padding: 10px; }
+  .group-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; gap: 4px; }
+  .group-name { font-size: 11px; font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .color-dots { display: flex; gap: 3px; flex-shrink: 0; }
+  .color-dot { width: 13px; height: 13px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.1s; }
+  .color-dot.active { border-color: var(--navy); transform: scale(1.25); }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    color: #fff; padding: 9px 20px; border-radius: 8px;
+    font-weight: 600; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    z-index: 9999; pointer-events: none; opacity: 0; transition: opacity 0.2s;
+  }
+  .toast.show { opacity: 1; }
+  .toast.success { background: var(--green); }
+  .toast.error   { background: var(--red); }
+
+  /* Drag ghost fix */
+  [draggable] { -webkit-user-drag: element; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ══ HOME ═══════════════════════════════════════════ -->
+<div id="home-screen" class="screen active">
+  <div class="home-inner">
+    <div class="home-logo">
+      <span class="emoji">🏫</span>
+      <h1>Outwood Academy Valley</h1>
+      <h2>Seating Plan Creator</h2>
+      <p>Create, manage and update classroom seating plans each term</p>
+    </div>
+    <div class="home-cards">
+      <button class="btn-new-plan" onclick="showScreen('setup')">
+        <span style="font-size:28px">＋</span>
+        <strong>New Seating Plan</strong>
+        <span class="desc">Set up a class, choose your room layout and seat your pupils</span>
+      </button>
+      <div id="saved-plans-box" class="saved-plans-box" style="display:none">
+        <h3>Saved Plans</h3>
+        <div id="saved-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SETUP ══════════════════════════════════════════ -->
+<div id="setup-screen" class="screen">
+  <div class="setup-inner">
+    <button class="back-btn" onclick="showScreen('home')">← Back to Home</button>
+    <div>
+      <div class="setup-school">Outwood Academy Valley</div>
+      <h2 class="setup-heading">Set Up Your Class</h2>
+    </div>
+
+    <!-- Class name -->
+    <div class="form-section">
+      <label class="form-label">Class Name</label>
+      <input id="class-name-input" class="text-input" type="text" placeholder="e.g. 10B Maths, Year 9 Science...">
+    </div>
+
+    <!-- Term -->
+    <div class="form-section">
+      <label class="form-label">Term</label>
+      <div class="term-row" id="term-row"></div>
+    </div>
+
+    <!-- Layout -->
+    <div class="form-section">
+      <label class="form-label">Room Layout</label>
+      <div class="preset-grid" id="preset-grid"></div>
+    </div>
+
+    <!-- Custom layout editor -->
+    <div class="form-section" id="custom-editor" style="display:none">
+      <label class="form-label">Click cells to toggle desks</label>
+      <div class="custom-controls">
+        <label class="dim-label">Rows: <input id="custom-rows" class="dim-input" type="number" min="2" max="10" value="6"></label>
+        <label class="dim-label">Cols: <input id="custom-cols" class="dim-input" type="number" min="2" max="12" value="8"></label>
+      </div>
+      <div id="custom-desk-grid"></div>
+      <p class="hint" id="custom-count">0 desks selected</p>
+    </div>
+
+    <!-- Door -->
+    <div class="form-section">
+      <label class="form-label">Door Position</label>
+      <p class="hint">Where is the classroom door? This will appear on your seating plan.</p>
+      <div class="door-grid" id="door-grid"></div>
+    </div>
+
+    <!-- Pupils -->
+    <div class="form-section">
+      <label class="form-label">Pupil Names</label>
+      <p class="hint">Paste names separated by new lines or commas. Use full names (First Last) for best display.</p>
+      <textarea id="names-input" class="text-input" rows="8" placeholder="Alice Johnson&#10;Ben Smith&#10;Carla Davis&#10;..."></textarea>
+      <button class="btn-secondary" onclick="loadNames()">Load Names</button>
+      <p class="hint" id="names-hint"></p>
+    </div>
+
+    <button class="btn-primary-big" onclick="goToPlan()">Continue to Seating Plan →</button>
+  </div>
+</div>
+
+<!-- ══ PLAN ═══════════════════════════════════════════ -->
+<div id="plan-screen" class="screen">
+  <header class="plan-header">
+    <div class="plan-header-top">
+      <button class="back-btn-plan" onclick="showScreen('setup')">← Edit Setup</button>
+      <span class="header-school">Outwood Academy Valley — Seating Plan Creator</span>
+    </div>
+    <div class="plan-header-bot">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="header-class" id="plan-class-label">Class</span>
+        <select class="term-select" id="plan-term-select"></select>
+      </div>
+      <div class="header-actions">
+        <button class="btn-action" onclick="randomSeat()">🎲 Random</button>
+        <button class="btn-action" onclick="clearSeating()">🗑 Clear</button>
+        <button class="btn-action btn-action-green" onclick="savePlan()">💾 Save</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="plan-body">
+    <div class="classroom-wrap">
+      <div class="board-label">📺 BOARD / FRONT OF CLASS</div>
+      <div class="classroom-outer">
+        <div class="door-marker" id="door-marker" style="display:none">
+          <span class="d-icon">🚪</span>
+          <span class="d-lbl" id="door-marker-label"></span>
+        </div>
+        <div id="desk-grid"></div>
+      </div>
+    </div>
+
+    <aside class="side-panel">
+      <div class="side-tabs">
+        <button class="side-tab active" id="tab-unseated" onclick="switchTab('unseated')">Unseated (<span id="unseated-count">0</span>)</button>
+        <button class="side-tab" id="tab-groups" onclick="switchTab('groups')">Groups</button>
+      </div>
+      <div id="panel-unseated" class="pupil-list"
+        ondragover="event.preventDefault()" ondrop="dropToList()"></div>
+      <div id="panel-groups" class="group-panel" style="display:none"></div>
+    </aside>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ────────────────────────────────────────────
+const TERMS = ["Autumn Term 1","Autumn Term 2","Spring Term 1","Spring Term 2","Summer Term 1","Summer Term 2"];
+const COLORS = ["#3B82F6","#10B981","#F59E0B","#EF4444","#8B5CF6","#EC4899","#14B8A6","#F97316"];
+const DOOR_OPTIONS = [
+  {id:"top-left",    label:"Front Left",  icon:"↖"},
+  {id:"top-right",   label:"Front Right", icon:"↗"},
+  {id:"bottom-left", label:"Back Left",   icon:"↙"},
+  {id:"bottom-right",label:"Back Right",  icon:"↘"},
+  {id:"left-mid",    label:"Left Side",   icon:"←"},
+  {id:"right-mid",   label:"Right Side",  icon:"→"},
+  {id:"none",        label:"No Door",     icon:"✕"},
+];
+const PRESETS = [
+  { id:"rows", name:"Traditional Rows", desc:"6 rows × 5 desks",
+    desks:(()=>{ const d=[]; for(let r=0;r<6;r++) for(let c=0;c<5;c++) d.push({id:`${r}-${c}`,row:r,col:c}); return d; })(),
+    cols:5, rows:6 },
+  { id:"horseshoe", name:"Horseshoe", desc:"U-shape",
+    desks:(()=>{
+      const d=[];
+      for(let c=0;c<7;c++) d.push({id:`b-${c}`,row:5,col:c});
+      for(let r=0;r<5;r++) d.push({id:`l-${r}`,row:r,col:0});
+      for(let r=0;r<5;r++) d.push({id:`r-${r}`,row:r,col:6});
+      return d;
+    })(), cols:7, rows:6 },
+  { id:"groups", name:"Group Tables", desc:"6 tables of 4",
+    desks:(()=>{
+      const d=[];
+      [[0,0],[0,1],[1,0],[1,1],[0,3],[0,4],[1,3],[1,4],[0,6],[0,7],[1,6],[1,7],
+       [3,0],[3,1],[4,0],[4,1],[3,3],[3,4],[4,3],[4,4],[3,6],[3,7],[4,6],[4,7]]
+        .forEach(([r,c],i)=>d.push({id:`g-${i}`,row:r,col:c}));
+      return d;
+    })(), cols:8, rows:5 },
+  { id:"pairs", name:"Paired Desks", desc:"5 rows of pairs",
+    desks:(()=>{
+      const d=[];
+      for(let r=0;r<5;r++) [0,1,3,4,6,7].forEach(c=>d.push({id:`${r}-${c}`,row:r,col:c}));
+      return d;
+    })(), cols:8, rows:5 },
+  { id:"custom", name:"Custom Layout", desc:"Design your own", desks:[], cols:8, rows:6 },
+];
+
+let state = {
+  screen: "home",
+  className: "",
+  selectedTerm: TERMS[0],
+  selectedPreset: null,
+  customDesks: [],
+  customRows: 6,
+  customCols: 8,
+  pupils: [],
+  seating: {},       // deskId -> pupilName
+  groups: {},        // pupilName -> colorIndex
+  door: "top-left",
+  savedPlans: {},
+  dragPupil: null,
+  dragFrom: null,    // deskId | "list"
+  activeTab: "unseated",
+  highlightPupil: null,
+};
+
+// ── HELPERS ──────────────────────────────────────────
+function initials(name) {
+  return name.split(" ").map(w=>w[0]||"").join("").slice(0,2).toUpperCase();
+}
+function firstName(name) { return name.split(" ")[0]; }
+function getLayout() {
+  if (state.selectedPreset === "custom")
+    return { desks: state.customDesks, cols: state.customCols, rows: state.customRows };
+  return PRESETS.find(p => p.id === state.selectedPreset) || null;
+}
+function unseatedPupils() {
+  const seated = new Set(Object.values(state.seating));
+  return state.pupils.filter(p => !seated.has(p));
+}
+
+// ── TOAST ─────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type="success") {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+}
+
+// ── SCREEN NAVIGATION ─────────────────────────────────
+function showScreen(name) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(name + "-screen").classList.add("active");
+  state.screen = name;
+  if (name === "home")  renderHome();
+  if (name === "setup") renderSetup();
+  if (name === "plan")  renderPlan();
+}
+
+// ── HOME ──────────────────────────────────────────────
+function renderHome() {
+  const keys = Object.keys(state.savedPlans);
+  const box  = document.getElementById("saved-plans-box");
+  const list = document.getElementById("saved-list");
+  if (!keys.length) { box.style.display = "none"; return; }
+  box.style.display = "block";
+  list.innerHTML = keys.map(k => {
+    const p = state.savedPlans[k];
+    return `<button class="saved-item" onclick="loadPlan('${k}')">
+      <span class="cls">${esc(p.className)}</span>
+      <span class="trm">${esc(p.term)}</span>
+    </button>`;
+  }).join("");
+}
+function loadPlan(key) {
+  const p = state.savedPlans[key];
+  if (!p) return;
+  state.className     = p.className;
+  state.selectedTerm  = p.term;
+  state.selectedPreset= p.layout;
+  state.seating       = { ...p.seating };
+  state.pupils        = p.pupils || [];
+  if (p.door) state.door = p.door;
+  showScreen("plan");
+}
+
+// ── SETUP ─────────────────────────────────────────────
+function renderSetup() {
+  // Terms
+  const tr = document.getElementById("term-row");
+  tr.innerHTML = TERMS.map(t =>
+    `<button class="term-chip${state.selectedTerm===t?" active":""}" onclick="selectTerm('${t}')">${t}</button>`
+  ).join("");
+
+  // Presets
+  const pg = document.getElementById("preset-grid");
+  pg.innerHTML = PRESETS.map(p => {
+    const svg = miniSvg(p);
+    return `<button class="preset-card${state.selectedPreset===p.id?" active":""}" onclick="selectPreset('${p.id}')">
+      ${svg}<strong>${p.name}</strong><span>${p.desc}</span>
+    </button>`;
+  }).join("");
+
+  // Door
+  const dg = document.getElementById("door-grid");
+  dg.innerHTML = DOOR_OPTIONS.map(d =>
+    `<button class="door-chip${state.door===d.id?" active":""}" onclick="selectDoor('${d.id}')">
+      <span class="door-icon">${d.icon}</span>
+      <span class="door-lbl">${d.label}</span>
+    </button>`
+  ).join("");
+
+  // Restore inputs
+  document.getElementById("class-name-input").value = state.className;
+  const ni = document.getElementById("names-hint");
+  ni.textContent = state.pupils.length ? `✓ ${state.pupils.length} pupils loaded` : "";
+  ni.className   = state.pupils.length ? "hint ok" : "hint";
+
+  toggleCustomEditor();
+  renderCustomGrid();
+
+  // Listeners for live save
+  document.getElementById("class-name-input").oninput = e => state.className = e.target.value;
+}
+
+function selectTerm(t) { state.selectedTerm = t; renderSetup(); }
+function selectPreset(id) { state.selectedPreset = id; renderSetup(); }
+function selectDoor(id)   { state.door = id; renderSetup(); }
+
+function toggleCustomEditor() {
+  document.getElementById("custom-editor").style.display =
+    state.selectedPreset === "custom" ? "block" : "none";
+}
+
+function renderCustomGrid() {
+  const r = parseInt(document.getElementById("custom-rows")?.value||state.customRows);
+  const c = parseInt(document.getElementById("custom-cols")?.value||state.customCols);
+  state.customRows = r; state.customCols = c;
+  const grid = document.getElementById("custom-desk-grid");
+  grid.style.gridTemplateColumns = `repeat(${c}, 34px)`;
+  grid.innerHTML = "";
+  for (let ri=0; ri<r; ri++) {
+    for (let ci=0; ci<c; ci++) {
+      const id = `c-${ri}-${ci}`;
+      const on = state.customDesks.find(d=>d.id===id);
+      const cell = document.createElement("div");
+      cell.className = "custom-cell" + (on?" on":"");
+      cell.textContent = on ? "🪑" : "";
+      cell.onclick = () => toggleCustomDesk(ri, ci);
+      grid.appendChild(cell);
+    }
+  }
+  document.getElementById("custom-count").textContent = state.customDesks.length + " desks selected";
+  document.getElementById("custom-rows").onchange = renderCustomGrid;
+  document.getElementById("custom-cols").onchange = renderCustomGrid;
+}
+
+function toggleCustomDesk(r, c) {
+  const id = `c-${r}-${c}`;
+  const idx = state.customDesks.findIndex(d=>d.id===id);
+  if (idx >= 0) state.customDesks.splice(idx, 1);
+  else          state.customDesks.push({id, row:r, col:c});
+  renderCustomGrid();
+}
+
+function loadNames() {
+  const raw = document.getElementById("names-input").value;
+  const names = raw.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean);
+  if (!names.length) { showToast("No names found","error"); return; }
+  state.pupils  = names;
+  state.seating = {};
+  const ni = document.getElementById("names-hint");
+  ni.textContent = `✓ ${names.length} pupils loaded`;
+  ni.className = "hint ok";
+  showToast(`${names.length} pupils loaded`);
+}
+
+function goToPlan() {
+  if (!state.className.trim())                                    { showToast("Enter a class name","error"); return; }
+  if (!state.selectedPreset)                                      { showToast("Choose a room layout","error"); return; }
+  if (state.selectedPreset==="custom"&&!state.customDesks.length) { showToast("Click desks to add them","error"); return; }
+  showScreen("plan");
+}
+
+// ── PLAN ──────────────────────────────────────────────
+function renderPlan() {
+  // Header
+  document.getElementById("plan-class-label").textContent = state.className || "Class";
+  const ts = document.getElementById("plan-term-select");
+  ts.innerHTML = TERMS.map(t=>`<option${state.selectedTerm===t?" selected":""}>${t}</option>`).join("");
+  ts.onchange = e => state.selectedTerm = e.target.value;
+
+  renderDoor();
+  renderDeskGrid();
+  renderSidePanel();
+}
+
+function renderDoor() {
+  const marker = document.getElementById("door-marker");
+  const lbl    = document.getElementById("door-marker-label");
+  if (state.door === "none") { marker.style.display = "none"; return; }
+  marker.style.display = "flex";
+  const opt = DOOR_OPTIONS.find(d=>d.id===state.door);
+  lbl.textContent = opt ? opt.label : "";
+
+  // Reset positioning
+  marker.style.top = marker.style.bottom = marker.style.left = marker.style.right = marker.style.transform = "";
+
+  const pos = {
+    "top-left":     { top:"4px",   left:"8px"  },
+    "top-right":    { top:"4px",   right:"8px" },
+    "bottom-left":  { bottom:"4px",left:"8px"  },
+    "bottom-right": { bottom:"4px",right:"8px" },
+    "left-mid":     { top:"50%",   left:"4px",  transform:"translateY(-50%)" },
+    "right-mid":    { top:"50%",   right:"4px", transform:"translateY(-50%)" },
+  };
+  const p = pos[state.door] || {};
+  Object.assign(marker.style, p);
+}
+
+function renderDeskGrid() {
+  const layout = getLayout();
+  if (!layout) return;
+  const grid = document.getElementById("desk-grid");
+  grid.style.gridTemplateColumns = `repeat(${layout.cols}, 1fr)`;
+  grid.style.gridTemplateRows    = `repeat(${layout.rows}, 1fr)`;
+  grid.innerHTML = "";
+
+  for (let r=0; r<layout.rows; r++) {
+    for (let c=0; c<layout.cols; c++) {
+      const desk = layout.desks.find(d=>d.row===r&&d.col===c);
+      if (!desk) {
+        const spacer = document.createElement("div");
+        grid.appendChild(spacer);
+        continue;
+      }
+      grid.appendChild(buildDesk(desk));
+    }
+  }
+}
+
+function buildDesk(desk) {
+  const pupil      = state.seating[desk.id] || null;
+  const groupColor = pupil && state.groups[pupil] !== undefined ? COLORS[state.groups[pupil]] : null;
+  const isHl       = state.highlightPupil && pupil === state.highlightPupil;
+
+  const el = document.createElement("div");
+  el.className = "desk " + (pupil ? "occupied" : "empty") + (isHl ? " highlight" : "");
+  if (groupColor) { el.style.borderColor = groupColor; el.style.borderWidth = "3px"; }
+
+  el.ondragover = e => { e.preventDefault(); el.classList.add("drag-over"); };
+  el.ondragleave = () => el.classList.remove("drag-over");
+  el.ondrop = e => { e.preventDefault(); el.classList.remove("drag-over"); dropToDesk(desk.id); };
+
+  if (pupil) {
+    el.draggable = true;
+    el.ondragstart = () => { state.dragPupil = pupil; state.dragFrom = desk.id; };
+
+    const init = document.createElement("div");
+    init.className = "desk-initial";
+    init.textContent = initials(pupil);
+    if (groupColor) { init.style.background = groupColor + "22"; init.style.color = groupColor; }
+
+    const fn = document.createElement("div");
+    fn.className = "desk-firstname";
+    fn.textContent = firstName(pupil);
+
+    const full = document.createElement("div");
+    full.className = "desk-fullname";
+    full.textContent = pupil;
+    full.title = pupil;
+
+    el.appendChild(init); el.appendChild(fn); el.appendChild(full);
+
+    el.onmouseenter = () => { state.highlightPupil = pupil; refreshHighlight(); };
+    el.onmouseleave = () => { state.highlightPupil = null; refreshHighlight(); };
+  } else {
+    const plus = document.createElement("span");
+    plus.className = "desk-empty-plus";
+    plus.textContent = "+";
+    el.appendChild(plus);
+  }
+  return el;
+}
+
+function refreshHighlight() {
+  // Re-render only desks for performance
+  renderDeskGrid();
+  updateUnseatedHighlight();
+}
+
+function updateUnseatedHighlight() {
+  document.querySelectorAll(".pupil-chip").forEach(chip => {
+    chip.classList.toggle("hl", chip.dataset.name === state.highlightPupil);
+  });
+}
+
+// ── DRAG & DROP ───────────────────────────────────────
+function dropToDesk(deskId) {
+  if (!state.dragPupil) return;
+  const prev = state.seating[deskId];
+  if (state.dragFrom && state.dragFrom !== "list") {
+    if (prev) state.seating[state.dragFrom] = prev;
+    else      delete state.seating[state.dragFrom];
+  }
+  state.seating[deskId] = state.dragPupil;
+  state.dragPupil = null; state.dragFrom = null;
+  renderDeskGrid();
+  renderSidePanel();
+}
+
+function dropToList() {
+  if (!state.dragPupil || state.dragFrom === "list") return;
+  delete state.seating[state.dragFrom];
+  state.dragPupil = null; state.dragFrom = null;
+  renderDeskGrid();
+  renderSidePanel();
+}
+
+// ── SIDE PANEL ────────────────────────────────────────
+function switchTab(tab) {
+  state.activeTab = tab;
+  document.getElementById("tab-unseated").classList.toggle("active", tab==="unseated");
+  document.getElementById("tab-groups").classList.toggle("active", tab==="groups");
+  document.getElementById("panel-unseated").style.display = tab==="unseated" ? "flex" : "none";
+  document.getElementById("panel-groups").style.display   = tab==="groups"   ? "block" : "none";
+  if (tab==="groups") renderGroupPanel();
+}
+
+function renderSidePanel() {
+  const up = unseatedPupils();
+  document.getElementById("unseated-count").textContent = up.length;
+  const panel = document.getElementById("panel-unseated");
+  panel.innerHTML = "";
+
+  if (!state.pupils.length) {
+    panel.innerHTML = `<p class="hint">Go back to load pupil names</p>`;
+    return;
+  }
+  if (!up.length) {
+    panel.innerHTML = `<p class="all-seated">✅ All pupils seated!</p>`;
+    return;
+  }
+  up.forEach(p => {
+    const chip = document.createElement("div");
+    chip.className = "pupil-chip" + (state.highlightPupil===p?" hl":"");
+    chip.draggable = true;
+    chip.dataset.name = p;
+    chip.innerHTML = `<span class="chip-init">${initials(p)}</span>${esc(p)}`;
+    chip.ondragstart = () => { state.dragPupil = p; state.dragFrom = "list"; };
+    chip.onmouseenter = () => { state.highlightPupil = p; refreshHighlight(); };
+    chip.onmouseleave = () => { state.highlightPupil = null; refreshHighlight(); };
+    panel.appendChild(chip);
+  });
+
+  const hint = document.createElement("p");
+  hint.className = "hint"; hint.style.marginTop = "8px";
+  hint.textContent = "Drag pupils onto desks, or use 🎲 Random";
+  panel.appendChild(hint);
+
+  if (state.activeTab==="groups") renderGroupPanel();
+}
+
+function renderGroupPanel() {
+  const panel = document.getElementById("panel-groups");
+  panel.innerHTML = `<p class="hint" style="margin-bottom:10px">Assign colour groups to highlight clusters or SEN arrangements</p>`;
+  state.pupils.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "group-row";
+    const name = document.createElement("span");
+    name.className = "group-name"; name.textContent = p; name.title = p;
+    const dots = document.createElement("div");
+    dots.className = "color-dots";
+    COLORS.forEach((col, ci) => {
+      const dot = document.createElement("div");
+      dot.className = "color-dot" + (state.groups[p]===ci?" active":"");
+      dot.style.background = col;
+      dot.onclick = () => {
+        state.groups[p] = state.groups[p]===ci ? undefined : ci;
+        renderGroupPanel();
+        renderDeskGrid();
+      };
+      dots.appendChild(dot);
+    });
+    row.appendChild(name); row.appendChild(dots);
+    panel.appendChild(row);
+  });
+}
+
+// ── PLAN ACTIONS ──────────────────────────────────────
+function randomSeat() {
+  const layout = getLayout();
+  if (!layout) return;
+  const shuffled = [...state.pupils].sort(()=>Math.random()-0.5);
+  state.seating = {};
+  layout.desks.forEach((desk, i) => { if (shuffled[i]) state.seating[desk.id] = shuffled[i]; });
+  renderDeskGrid();
+  renderSidePanel();
+  showToast("Pupils randomly seated!");
+}
+
+function clearSeating() {
+  state.seating = {};
+  renderDeskGrid();
+  renderSidePanel();
+  showToast("Seating cleared");
+}
+
+function savePlan() {
+  const key = `${state.className}__${state.selectedTerm}`;
+  state.savedPlans[key] = {
+    seating: { ...state.seating },
+    layout:  state.selectedPreset,
+    className: state.className,
+    term:    state.selectedTerm,
+    pupils:  [...state.pupils],
+    door:    state.door,
+  };
+  showToast(`Saved: ${state.className} — ${state.selectedTerm}`);
+}
+
+// ── SVG MINI PREVIEW ──────────────────────────────────
+function miniSvg(preset) {
+  const cols=preset.cols||5, rows=preset.rows||6, s=6, g=2;
+  const w=cols*(s+g), h=rows*(s+g);
+  const rects = preset.desks.map(d =>
+    `<rect x="${d.col*(s+g)}" y="${d.row*(s+g)}" width="${s}" height="${s}" rx="1" fill="${preset.id==='custom'?'#94A3B8':'#3B82F6'}" opacity="0.7"/>`
+  ).join("");
+  return `<svg width="${w}" height="${h}" style="display:block;margin:0 auto 5px" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
+}
+
+// ── ESCAPE ────────────────────────────────────────────
+function esc(str) {
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ── INIT ──────────────────────────────────────────────
+renderHome();
+</script>
+</body>
+</html>
